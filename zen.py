@@ -4,6 +4,8 @@
     Zen, a simple web framework.
 """
 
+import re
+
 STATUS_INFO = {
     200: 'OK',
     404: 'Not Found'
@@ -16,7 +18,7 @@ class Request:
 
     @property
     def path(self):
-        return self.environ.get('PATH_INFO')
+        return self.environ.get('PATH_INFO', '').rstrip('/')
 
     @property
     def method(self):
@@ -54,14 +56,15 @@ class Response:
 
     @property
     def body(self):
-        return self._body.encode('utf-8')
+        if self._body:
+            return str(self._body).encode('utf-8')
 
     @body.setter
     def body(self, value):
         self._body = value
 
 
-class Contex:
+class Context:
     def __init__(self, environ):
         self.request = Request(environ)
         self.response = Response()
@@ -69,16 +72,28 @@ class Contex:
 
 class Zen:
 
+    def __init__(self):
+        self.route_processors = []
+
     def __call__(self, environ, start_response):
-        ctx = Contex(environ)
+        ctx = Context(environ)
 
-        ctx.response.status_code = 200
-        ctx.response.set_header('TEST', 'hello_world')
-        ctx.response.body = 'Hello world'
+        for path, method, func in self.route_processors:
+            if ctx.request.path == path:
+                ctx.response.body = func()
 
-        print(ctx.response.status)
-        print(ctx.response.response_headers)
-        print(ctx.response.body)
-        start_response(ctx.response.status, ctx.response.response_headers)
-        return [ctx.response.body]
+        status = ctx.response.status
+        headers = ctx.response.response_headers
+        body = ctx.response.body
+        start_response(status, headers)
+        return [body]
+
+    def route(self, path, method=None):
+        if method is None:
+            method = 'GET'
+
+        def _decorator(func):
+            self.route_processors.append((path, method, func))
+
+        return _decorator
 

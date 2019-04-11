@@ -61,18 +61,24 @@ class Response:
         self._body = value
 
 
+class Contex:
+    def __init__(self, environ):
+        self.request = Request(environ)
+        self.response = Response()
+
+
 class Zen:
+
     def __call__(self, environ, start_response):
-        request = Request(environ)
-        response = Response()
+        ctx = Contex(environ)
 
-        response.status_code = 200
-        response.set_header('TEST', 'hello_world')
-        response.body = 'Hello world'
+        ctx.response.status_code = 200
+        ctx.response.set_header('TEST', 'hello_world')
+        ctx.response.body = 'Hello world'
 
-        print(response.status)
-        print(response.response_headers)
-        print(response.body)
-        start_response(response.status, response.response_headers)
-        return [response.body]
+        print(ctx.response.status)
+        print(ctx.response.response_headers)
+        print(ctx.response.body)
+        start_response(ctx.response.status, ctx.response.response_headers)
+        return [ctx.response.body]
 

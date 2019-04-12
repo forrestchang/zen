@@ -18,7 +18,8 @@ class Request:
 
     @property
     def path(self):
-        return self.environ.get('PATH_INFO', '').rstrip('/')
+        print('=======PATH_INFO: ' + self.environ.get('PATH_INFO'))
+        return self.environ.get('PATH_INFO', '')
 
     @property
     def method(self):

@@ -9,7 +9,7 @@ from zen import Zen
 app = Zen()
 
 
-@app.route('/index', method='GET')
+@app.route('/', method='GET')
 def index():
     return 'Hello world'
 

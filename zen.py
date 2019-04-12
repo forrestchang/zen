@@ -77,10 +77,17 @@ class Zen:
 
     def __call__(self, environ, start_response):
         ctx = Context(environ)
+        
+        matched = False
 
         for path, method, func in self.route_processors:
             if ctx.request.path == path:
+                matched = True
                 ctx.response.body = func()
+
+        if not matched:
+            ctx.response.status_code = 404
+            ctx.response.body = 'Nof Found'
 
         status = ctx.response.status
         headers = ctx.response.response_headers

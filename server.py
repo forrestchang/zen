@@ -1,14 +1,10 @@
-# -*- coding: utf-8 -*-
-"""
-    A simple server to run wsgi application.
-"""
+"""server.py"""
 
-from werkzeug.serving import run_simple
+from wsgiref.simple_server import make_server
 from app import app
 
-if __name__ == '__main__':
-    host = '127.0.0.1'
-    port = 5525
 
-    run_simple(host, port, app, use_debugger=True, use_reloader=True)
+if __name__ == '__main__':
+    server = make_server('127.0.0.1', 8888, app)
+    server.serve_forever()
 

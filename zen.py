@@ -1,15 +1,20 @@
-# -*- coding: utf-8 -*-
+"""zen.py"""
 
-"""
-    Zen, a simple web framework.
-"""
 
-import re
+class ZenException(Exception):
+    pass
 
-STATUS_INFO = {
-    200: 'OK',
-    404: 'Not Found'
-}
+
+class RouteError(ZenException):
+    pass
+
+
+class HTTPError(ZenException):
+    pass
+
+
+def abort(status_code):
+    raise HTTPError(status_code)
 
 
 class Request:
@@ -18,7 +23,6 @@ class Request:
 
     @property
     def path(self):
-        print('=======PATH_INFO: ' + self.environ.get('PATH_INFO'))
         return self.environ.get('PATH_INFO', '')
 
     @property
@@ -38,10 +42,16 @@ class Request:
         return query
 
 
+STATUS_INFO = {
+    200: 'OK',
+    404: 'Not Found'
+}
+
+
 class Response:
     def __init__(self):
         self.status_code = 200
-        self.headers = {}
+        self._headers = {}
         self._body = None
 
     @property
@@ -49,50 +59,50 @@ class Response:
         return f'{self.status_code} {STATUS_INFO[self.status_code]}'
 
     @property
-    def response_headers(self):
-        return [(str(key), str(value)) for key, value in self.headers.items()]
-
-    def set_header(self, key, value):
-        self.headers[key] = value
+    def headers(self):
+        return [(str(key), str(value)) for key, value in self._headers.items()]
 
     @property
     def body(self):
-        if self._body:
-            return str(self._body).encode('utf-8')
+        if isinstance(self._body, bytes):
+            return self._body
+        return str(self._body).encode('utf-8')
 
     @body.setter
     def body(self, value):
         self._body = value
 
-
-class Context:
-    def __init__(self, environ):
-        self.request = Request(environ)
-        self.response = Response()
+    def set_header(self, key, value):
+        self._headers[key] = value
 
 
 class Zen:
-
     def __init__(self):
-        self.route_processors = []
+        self.route_processor = []
 
     def __call__(self, environ, start_response):
-        ctx = Context(environ)
-        
+        request = Request(environ)
+        response = Response()
+
         matched = False
 
-        for path, method, func in self.route_processors:
-            if ctx.request.path == path:
+        for path, method, func in self.route_processor:
+            if request.path == path and request.method == method:
                 matched = True
-                ctx.response.body = func()
+                response.status_code = 200
+                result = func(request, response)
+                if not result:
+                    raise HTTPError
+                response.body = result
 
         if not matched:
-            ctx.response.status_code = 404
-            ctx.response.body = 'Nof Found'
+            response.status_code = 404
+            response.body = 'Not Found'
 
-        status = ctx.response.status
-        headers = ctx.response.response_headers
-        body = ctx.response.body
+        status = response.status
+        headers = response.headers
+        body = response.body
+
         start_response(status, headers)
         return [body]
 
@@ -100,8 +110,16 @@ class Zen:
         if method is None:
             method = 'GET'
 
-        def _decorator(func):
-            self.route_processors.append((path, method, func))
+        def _decoractor(func):
+            self.route_processor.append((path, method, func))
 
-        return _decorator
+        return _decoractor
 
+    def get(self, path):
+        return self.route(path, 'GET')
+
+    def post(self, path):
+        return self.route(path, 'POST')
+
+    def put(self, path):
+        return self.route(path, 'PUT')

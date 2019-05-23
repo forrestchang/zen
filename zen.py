@@ -1,86 +1,101 @@
 """zen.py"""
 
+from typing import Any, Callable, Dict, List, Tuple
+
 
 class ZenException(Exception):
-    pass
+    """Zen Exception"""
 
 
 class RouteError(ZenException):
-    pass
+    """Route Error"""
 
 
 class HTTPError(ZenException):
-    pass
+    """HTTP Error"""
 
 
-def abort(status_code):
-    raise HTTPError(status_code)
+def abort(status_code: int) -> Exception:
+    """Abort HTTP request"""
+    return HTTPError(status_code)
 
 
 class Request:
-    def __init__(self, environ):
+    """Basic Request object"""
+
+    def __init__(self, environ: dict) -> None:
         self.environ = environ
 
     @property
-    def path(self):
-        return self.environ.get('PATH_INFO', '')
+    def path(self) -> str:
+        """Get path info"""
+        return self.environ.get("PATH_INFO", "")
 
     @property
-    def method(self):
-        return self.environ.get('REQUEST_METHOD', 'GET').upper()
+    def method(self) -> str:
+        """Get method info"""
+        return self.environ.get("REQUEST_METHOD", "GET").upper()
 
     @property
-    def query_string(self):
-        return self.environ.get('QUERY_STRING', '')
+    def query_string(self) -> str:
+        """Get query string"""
+        return self.environ.get("QUERY_STRING", "")
 
     @property
-    def query(self):
+    def query(self) -> dict:
+        """Get query dict"""
         query = {}
-        for elem in self.query_string.split('&'):
-            key, value = elem.split('=')
+        for elem in self.query_string.split("&"):
+            key, value = elem.split("=")
             query[key] = value
         return query
 
 
-STATUS_INFO = {
-    200: 'OK',
-    404: 'Not Found'
-}
+STATUS_INFO = {200: "OK", 404: "Not Found"}
 
 
 class Response:
-    def __init__(self):
+    """Basic Response object"""
+
+    def __init__(self) -> None:
         self.status_code = 200
-        self._headers = {}
+        self._headers: Dict = {}
         self._body = None
 
     @property
-    def status(self):
-        return f'{self.status_code} {STATUS_INFO[self.status_code]}'
+    def status(self) -> str:
+        """Get status"""
+        return f"{self.status_code} {STATUS_INFO[self.status_code]}"
 
     @property
-    def headers(self):
+    def headers(self) -> List[Tuple[str, str]]:
+        """Get headers"""
         return [(str(key), str(value)) for key, value in self._headers.items()]
 
     @property
-    def body(self):
+    def body(self) -> bytes:
+        """Get body"""
         if isinstance(self._body, bytes):
             return self._body
-        return str(self._body).encode('utf-8')
+        return str(self._body).encode("utf-8")
 
     @body.setter
-    def body(self, value):
+    def body(self, value: Any) -> None:
+        """Set body"""
         self._body = value
 
-    def set_header(self, key, value):
+    def set_header(self, key: str, value: str) -> None:
+        """Set headers"""
         self._headers[key] = value
 
 
 class Zen:
-    def __init__(self):
-        self.route_processor = []
+    """Zen web framework"""
 
-    def __call__(self, environ, start_response):
+    def __init__(self) -> None:
+        self.route_processor: List = []
+
+    def __call__(self, environ: dict, start_response: Callable) -> List[bytes]:
         request = Request(environ)
         response = Response()
 
@@ -97,7 +112,7 @@ class Zen:
 
         if not matched:
             response.status_code = 404
-            response.body = 'Not Found'
+            response.body = "Not Found"  # type: ignore
 
         status = response.status
         headers = response.headers
@@ -106,20 +121,24 @@ class Zen:
         start_response(status, headers)
         return [body]
 
-    def route(self, path, method=None):
+    def route(self, path, method: str = None) -> Callable:
+        """Route decoractor"""
         if method is None:
-            method = 'GET'
+            method = "GET"
 
         def _decoractor(func):
             self.route_processor.append((path, method, func))
 
         return _decoractor
 
-    def get(self, path):
-        return self.route(path, 'GET')
+    def get(self, path: str) -> Callable:
+        """Get method"""
+        return self.route(path, "GET")
 
-    def post(self, path):
-        return self.route(path, 'POST')
+    def post(self, path: str) -> Callable:
+        """Post method"""
+        return self.route(path, "POST")
 
-    def put(self, path):
-        return self.route(path, 'PUT')
+    def put(self, path: str) -> Callable:
+        """Put method"""
+        return self.route(path, "PUT")
